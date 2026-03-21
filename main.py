@@ -1,12 +1,14 @@
 import os
 import json
 import secrets
-import sqlite3
 import hashlib
 import base64
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -20,7 +22,7 @@ load_dotenv()
 app = FastAPI(title="Medical Document Extractor")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-DB_PATH = os.getenv("DB_PATH", "users.db")
+DATABASE_URL    = os.getenv("DATABASE_URL")
 
 genai.configure(api_key=GEMINI_API_KEY)
 gemini_model = genai.GenerativeModel("gemini-2.5-flash")
@@ -51,84 +53,106 @@ PROMPT = (
 
 
 # ---------------------------------------------------------------------------
-# Database
+# Database helpers
 # ---------------------------------------------------------------------------
 
+def get_conn():
+    return psycopg2.connect(DATABASE_URL)
+
+
 def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                username         TEXT UNIQUE NOT NULL,
-                email            TEXT UNIQUE NOT NULL,
-                hashed_password  TEXT NOT NULL,
-                created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS extractions (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id    INTEGER NOT NULL,
-                fecha      TEXT NOT NULL,
-                nhc        TEXT,
-                nombre     TEXT,
-                ptc        TEXT DEFAULT '',
-                medico     TEXT,
-                entidad    TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            )
-        """)
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id               SERIAL PRIMARY KEY,
+                    username         TEXT UNIQUE NOT NULL,
+                    email            TEXT UNIQUE NOT NULL,
+                    hashed_password  TEXT NOT NULL,
+                    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS extractions (
+                    id         SERIAL PRIMARY KEY,
+                    user_id    INTEGER NOT NULL REFERENCES users(id),
+                    fecha      TEXT NOT NULL,
+                    nhc        TEXT,
+                    nombre     TEXT,
+                    ptc        TEXT DEFAULT '',
+                    medico     TEXT,
+                    entidad    TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
         conn.commit()
+    finally:
+        conn.close()
 
 
 def get_user_by_username(username: str) -> Optional[dict]:
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        row = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
-        return dict(row) if row else None
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
 
 
 def get_user_by_email(email: str) -> Optional[dict]:
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        row = conn.execute(
-            "SELECT * FROM users WHERE email = ?", (email,)
-        ).fetchone()
-        return dict(row) if row else None
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
 
 
 def create_user(username: str, email: str, password: str):
     hashed = pwd_context.hash(_prepare(password))
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            "INSERT INTO users (username, email, hashed_password) VALUES (?, ?, ?)",
-            (username, email, hashed),
-        )
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO users (username, email, hashed_password) VALUES (%s, %s, %s)",
+                (username, email, hashed),
+            )
         conn.commit()
+    finally:
+        conn.close()
 
 
 def save_extraction(user_id: int, fecha: str, nhc: str, nombre: str,
                     ptc: str, medico: str, entidad: str):
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            """INSERT INTO extractions (user_id, fecha, nhc, nombre, ptc, medico, entidad)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, fecha, nhc, nombre, ptc, medico, entidad),
-        )
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO extractions (user_id, fecha, nhc, nombre, ptc, medico, entidad)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (user_id, fecha, nhc, nombre, ptc, medico, entidad),
+            )
         conn.commit()
+    finally:
+        conn.close()
 
 
 def get_extractions(user_id: int) -> list:
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT * FROM extractions WHERE user_id = ? ORDER BY created_at ASC",
-            (user_id,)
-        ).fetchall()
-        return [dict(r) for r in rows]
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM extractions WHERE user_id = %s ORDER BY created_at ASC",
+                (user_id,)
+            )
+            return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
 
 
 init_db()
@@ -165,9 +189,9 @@ async def root():
 async def register(request: Request):
     body = await request.json()
     username = body.get("username", "").strip()
-    email = body.get("email", "").strip()
+    email    = body.get("email", "").strip()
     password = body.get("password", "")
-    confirm = body.get("confirm_password", "")
+    confirm  = body.get("confirm_password", "")
 
     if not username or not email or not password:
         raise HTTPException(status_code=400, detail="Todos los campos son obligatorios")
@@ -236,8 +260,7 @@ async def list_extractions(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
-    rows = get_extractions(user["user_id"])
-    return rows
+    return get_extractions(user["user_id"])
 
 
 @app.post("/extract")
@@ -247,7 +270,7 @@ async def extract(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=401, detail="No autenticado")
 
     content_type = file.content_type or "image/jpeg"
-    image_data = base64.b64encode(await file.read()).decode("utf-8")
+    image_data   = base64.b64encode(await file.read()).decode("utf-8")
 
     try:
         response = gemini_model.generate_content([
@@ -259,7 +282,7 @@ async def extract(request: Request, file: UploadFile = File(...)):
 
     raw_text = response.text.strip()
     start = raw_text.find("{")
-    end = raw_text.rfind("}") + 1
+    end   = raw_text.rfind("}") + 1
     if start != -1 and end > start:
         raw_text = raw_text[start:end]
 
@@ -268,20 +291,16 @@ async def extract(request: Request, file: UploadFile = File(...)):
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=422, detail=f"JSON parse error: {e}\nRaw: {raw_text}")
 
-    fecha = datetime.now().strftime("%d/%m/%Y")
-    nhc = extracted.get("nhc", "")
-    nombre = extracted.get("nombre", "")
-    ptc = ""
-    medico = extracted.get("medico", "")
+    fecha   = datetime.now().strftime("%d/%m/%Y")
+    nhc     = extracted.get("nhc", "")
+    nombre  = extracted.get("nombre", "")
+    ptc     = ""
+    medico  = extracted.get("medico", "")
     entidad = extracted.get("entidad", "")
 
     save_extraction(user["user_id"], fecha, nhc, nombre, ptc, medico, entidad)
 
     return {
-        "fecha": fecha,
-        "nhc": nhc,
-        "nombre": nombre,
-        "ptc": ptc,
-        "medico": medico,
-        "entidad": entidad,
+        "fecha": fecha, "nhc": nhc, "nombre": nombre,
+        "ptc": ptc, "medico": medico, "entidad": entidad,
     }
