@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extractor de Documentos Médicos</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      color: #1a202c;
+    }
+
+    /* ── AUTH ── */
+    #auth-view {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .auth-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.10);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .auth-card h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: .25rem; }
+    .auth-card p  { color: #718096; font-size: .9rem; margin-bottom: 1.5rem; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .35rem; color: #4a5568; }
+
+    input[type=text], input[type=email], input[type=password] {
+      width: 100%;
+      padding: .65rem .9rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: .95rem;
+      transition: border-color .2s;
+      outline: none;
+    }
+    input:focus { border-color: #5a67d8; }
+
+    .btn-primary {
+      width: 100%;
+      padding: .75rem;
+      background: #5a67d8;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+      margin-top: .5rem;
+    }
+    .btn-primary:hover { background: #4c51bf; }
+    .btn-primary:disabled { background: #a0aec0; cursor: not-allowed; }
+
+    .auth-switch { text-align: center; margin-top: 1.25rem; font-size: .88rem; color: #718096; }
+    .auth-switch a { color: #5a67d8; font-weight: 600; cursor: pointer; text-decoration: none; }
+    .auth-switch a:hover { text-decoration: underline; }
+
+    .alert {
+      padding: .65rem .9rem;
+      border-radius: 8px;
+      font-size: .88rem;
+      margin-bottom: 1rem;
+    }
+    .alert-error { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+    .alert-success { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
+
+    /* ── APP ── */
+    #app-view { display: none; flex-direction: column; min-height: 100vh; }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-logo { font-size: 1.15rem; font-weight: 700; color: #2d3748; }
+    .header-logo span { color: #5a67d8; }
+    .header-user { display: flex; align-items: center; gap: 1rem; font-size: .9rem; color: #4a5568; }
+    .btn-logout {
+      padding: .4rem .9rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      font-size: .85rem;
+      cursor: pointer;
+      color: #4a5568;
+      transition: all .2s;
+    }
+    .btn-logout:hover { border-color: #fc8181; color: #c53030; }
+
+    main { flex: 1; padding: 2rem; max-width: 1100px; width: 100%; margin: 0 auto; }
+
+    /* ── UPLOAD ── */
+    .upload-zone {
+      border: 2.5px dashed #c3d0e8;
+      border-radius: 16px;
+      background: #fff;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      margin-bottom: 2rem;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #5a67d8;
+      background: #ebf0ff;
+    }
+    .upload-zone .icon { font-size: 3rem; margin-bottom: .75rem; }
+    .upload-zone h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: .4rem; }
+    .upload-zone p  { color: #718096; font-size: .88rem; }
+    .upload-zone input { display: none; }
+
+    .upload-status {
+      margin-top: 1rem;
+      font-size: .9rem;
+      font-weight: 500;
+    }
+    .upload-status.loading { color: #5a67d8; }
+    .upload-status.error   { color: #c53030; }
+    .upload-status.success { color: #276749; }
+
+    /* ── TABLE ── */
+    .table-section { background: #fff; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,.06); overflow: hidden; }
+
+    .table-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid #e2e8f0;
+      flex-wrap: wrap;
+      gap: .75rem;
+    }
+    .table-header h2 { font-size: 1rem; font-weight: 700; }
+
+    .table-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+
+    .btn-action {
+      padding: .45rem 1rem;
+      border-radius: 8px;
+      font-size: .83rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid #e2e8f0;
+      background: #fff;
+      color: #4a5568;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .btn-action:hover { border-color: #5a67d8; color: #5a67d8; }
+    .btn-action.danger:hover { border-color: #fc8181; color: #c53030; }
+    .btn-action.csv { border-color: #48bb78; color: #276749; }
+    .btn-action.csv:hover { background: #f0fff4; }
+
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    thead th {
+      background: #f7fafc;
+      padding: .75rem 1rem;
+      text-align: left;
+      font-size: .75rem;
+      font-weight: 700;
+      color: #718096;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    tbody tr { border-bottom: 1px solid #f0f4f8; transition: background .15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f7fafc; }
+    tbody td { padding: .75rem 1rem; color: #2d3748; }
+    tbody td.nhc { color: #5a67d8; font-weight: 600; font-family: monospace; }
+    tbody td.nombre { font-weight: 500; }
+    tbody td.num { color: #a0aec0; font-size: .8rem; }
+
+    .table-footer {
+      padding: .75rem 1.5rem;
+      border-top: 1px solid #f0f4f8;
+      font-size: .82rem;
+      color: #a0aec0;
+      text-align: right;
+    }
+
+    .empty-state {
+      padding: 3rem;
+      text-align: center;
+      color: #a0aec0;
+      font-size: .92rem;
+    }
+
+    /* ── SPINNER ── */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2.5px solid #c3d0e8;
+      border-top-color: #5a67d8;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: .4rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════ AUTH VIEW ════════════════════════════════ -->
+<div id="auth-view">
+  <div class="auth-card">
+
+    <!-- LOGIN -->
+    <div id="login-panel">
+      <h1>Iniciar sesión</h1>
+      <p>Accede para extraer documentos médicos.</p>
+      <div id="login-alert" class="alert alert-error" style="display:none"></div>
+      <div class="form-group">
+        <label>Usuario</label>
+        <input id="login-username" type="text" placeholder="Tu usuario" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input id="login-password" type="password" placeholder="Tu contraseña" autocomplete="current-password" />
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Iniciar sesión</button>
+      <p class="auth-switch">¿No tienes cuenta? <a onclick="showRegister()">Crear cuenta</a></p>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="register-panel" style="display:none">
+      <h1>Crear cuenta</h1>
+      <p>Regístrate para empezar a extraer documentos.</p>
+      <div id="register-alert" class="alert alert-error" style="display:none"></div>
+      <div class="form-group">
+        <label>Usuario</label>
+        <input id="reg-username" type="text" placeholder="Elige un usuario" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input id="reg-email" type="email" placeholder="tu@email.com" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input id="reg-password" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+      </div>
+      <div class="form-group">
+        <label>Repetir contraseña</label>
+        <input id="reg-confirm" type="password" placeholder="Repite la contraseña" autocomplete="new-password" />
+      </div>
+      <button class="btn-primary" onclick="doRegister()">Crear cuenta</button>
+      <p class="auth-switch">¿Ya tienes cuenta? <a onclick="showLogin()">Iniciar sesión</a></p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════ APP VIEW ════════════════════════════════ -->
+<div id="app-view">
+
+  <header>
+    <div class="header-logo">🏥 <span>MedExtract</span></div>
+    <div class="header-user">
+      <span id="header-username"></span>
+      <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Upload -->
+    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="icon">📄</div>
+      <h2>Sube un documento médico</h2>
+      <p>Arrastra una imagen aquí o haz clic para seleccionar</p>
+      <p style="margin-top:.4rem; font-size:.8rem; color:#a0aec0">JPG, PNG, WEBP, PDF</p>
+      <input type="file" id="file-input" accept="image/*,application/pdf" onchange="handleFile(this.files[0])" />
+      <div id="upload-status" class="upload-status"></div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-section">
+      <div class="table-header">
+        <h2>Datos extraídos</h2>
+        <div class="table-actions">
+          <button class="btn-action" onclick="copyAll()">📋 Copiar todo</button>
+          <button class="btn-action csv" onclick="downloadCSV()">⬇ Descargar CSV</button>
+          <button class="btn-action danger" onclick="clearTable()">🗑 Limpiar tabla</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Fecha</th>
+              <th>NHC</th>
+              <th>Nombre</th>
+              <th>PTC</th>
+              <th>Médico</th>
+              <th>Entidad</th>
+            </tr>
+          </thead>
+          <tbody id="results-body">
+            <tr><td colspan="7" class="empty-state">No hay extracciones todavía. Sube un documento para empezar.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer" id="row-count">0 filas en la tabla</div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  /* ── State ── */
+  let rows = [];
+
+  /* ── Auth switching ── */
+  function showRegister() {
+    document.getElementById('login-panel').style.display = 'none';
+    document.getElementById('register-panel').style.display = '';
+    clearAlerts();
+  }
+  function showLogin() {
+    document.getElementById('register-panel').style.display = 'none';
+    document.getElementById('login-panel').style.display = '';
+    clearAlerts();
+  }
+  function clearAlerts() {
+    ['login-alert','register-alert'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.display = 'none';
+      el.textContent = '';
+    });
+  }
+  function showAlert(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = '';
+  }
+
+  /* ── Login ── */
+  async function doLogin() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!username || !password) { showAlert('login-alert', 'Completa todos los campos.'); return; }
+
+    try {
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) { showAlert('login-alert', data.detail || 'Error al iniciar sesión'); return; }
+      enterApp(data.username);
+    } catch {
+      showAlert('login-alert', 'Error de red. Inténtalo de nuevo.');
+    }
+  }
+
+  /* ── Register ── */
+  async function doRegister() {
+    const username = document.getElementById('reg-username').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const confirm  = document.getElementById('reg-confirm').value;
+    if (!username || !email || !password) { showAlert('register-alert', 'Completa todos los campos.'); return; }
+
+    try {
+      const res = await fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password, confirm_password: confirm })
+      });
+      const data = await res.json();
+      if (!res.ok) { showAlert('register-alert', data.detail || 'Error al registrarse'); return; }
+      enterApp(data.username);
+    } catch {
+      showAlert('register-alert', 'Error de red. Inténtalo de nuevo.');
+    }
+  }
+
+  /* ── Logout ── */
+  async function doLogout() {
+    await fetch('/auth/logout', { method: 'POST' });
+    rows = [];
+    document.getElementById('app-view').style.display = 'none';
+    document.getElementById('auth-view').style.display = 'flex';
+    document.getElementById('login-username').value = '';
+    document.getElementById('login-password').value = '';
+    showLogin();
+  }
+
+  /* ── Enter app ── */
+  async function enterApp(username) {
+    document.getElementById('header-username').textContent = username;
+    document.getElementById('auth-view').style.display = 'none';
+    document.getElementById('app-view').style.display = 'flex';
+    await loadExtractions();
+  }
+
+  /* ── Load saved extractions ── */
+  async function loadExtractions() {
+    try {
+      const res = await fetch('/extractions');
+      if (!res.ok) return;
+      const data = await res.json();
+      rows = data.map(r => ({
+        fecha: r.fecha, nhc: r.nhc, nombre: r.nombre,
+        ptc: r.ptc, medico: r.medico, entidad: r.entidad
+      }));
+      renderTable();
+    } catch { /* ignore */ }
+  }
+
+  /* ── Upload ── */
+  const dropZone = document.getElementById('drop-zone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  function setStatus(msg, type) {
+    const el = document.getElementById('upload-status');
+    el.className = 'upload-status ' + type;
+    el.innerHTML = msg;
+  }
+
+  async function handleFile(file) {
+    if (!file) return;
+    setStatus('<span class="spinner"></span>Extrayendo datos...', 'loading');
+
+    const form = new FormData();
+    form.append('file', file);
+
+    try {
+      const res = await fetch('/extract', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) { setStatus('❌ ' + (data.detail || 'Error al extraer'), 'error'); return; }
+
+      rows.push(data);
+      renderTable();
+      setStatus('✅ Datos extraídos correctamente', 'success');
+      document.getElementById('file-input').value = '';
+      setTimeout(() => setStatus('', ''), 3000);
+    } catch {
+      setStatus('❌ Error de red. Inténtalo de nuevo.', 'error');
+    }
+  }
+
+  /* ── Render table ── */
+  function renderTable() {
+    const tbody = document.getElementById('results-body');
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay extracciones todavía. Sube un documento para empezar.</td></tr>';
+      document.getElementById('row-count').textContent = '0 filas en la tabla';
+      return;
+    }
+    tbody.innerHTML = rows.map((r, i) => `
+      <tr>
+        <td class="num">${i + 1}</td>
+        <td>${r.fecha || ''}</td>
+        <td class="nhc">${r.nhc || ''}</td>
+        <td class="nombre">${r.nombre || ''}</td>
+        <td>${r.ptc || '—'}</td>
+        <td>${r.medico || ''}</td>
+        <td>${r.entidad || ''}</td>
+      </tr>
+    `).join('');
+    const n = rows.length;
+    document.getElementById('row-count').textContent = `${n} ${n === 1 ? 'fila' : 'filas'} en la tabla`;
+  }
+
+  /* ── Copy all (values only, no headers) ── */
+  function copyAll() {
+    if (rows.length === 0) return;
+    const text = rows.map(r =>
+      [r.fecha, r.nhc, r.nombre, r.ptc, r.medico, r.entidad].join('\t')
+    ).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = event.target.closest('button');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✅ Copiado';
+      setTimeout(() => btn.innerHTML = orig, 2000);
+    });
+  }
+
+  /* ── Download CSV ── */
+  function downloadCSV() {
+    if (rows.length === 0) return;
+    const headers = ['Fecha', 'NHC', 'Nombre', 'PTC', 'Médico', 'Entidad'];
+    const csvRows = [
+      headers.join(','),
+      ...rows.map(r =>
+        [r.fecha, r.nhc, r.nombre, r.ptc, r.medico, r.entidad]
+          .map(v => `"${(v || '').replace(/"/g, '""')}"`)
+          .join(',')
+      )
+    ];
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `extracciones_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  }
+
+  /* ── Clear table ── */
+  function clearTable() {
+    if (rows.length === 0) return;
+    if (!confirm('¿Seguro que quieres limpiar la tabla? Los datos guardados se mantendrán en el servidor.')) return;
+    rows = [];
+    renderTable();
+  }
+
+  /* ── On load: check if already logged in ── */
+  (async () => {
+    try {
+      const res = await fetch('/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        enterApp(data.username);
+      }
+    } catch { /* show login */ }
+  })();
+
+  /* ── Enter key on login form ── */
+  document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('login-username').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+</script>
+</body>
+</html>

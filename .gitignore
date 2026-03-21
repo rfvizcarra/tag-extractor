@@ -1,0 +1,13 @@
+.env
+*.env
+users.db
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.claude/
+Old_data/
