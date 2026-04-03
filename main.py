@@ -5,12 +5,12 @@ import hashlib
 import base64
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -22,7 +22,7 @@ load_dotenv()
 app = FastAPI(title="Medical Document Extractor")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-DATABASE_URL    = os.getenv("DATABASE_URL")
+DATABASE_URL   = os.getenv("DATABASE_URL")
 
 genai.configure(api_key=GEMINI_API_KEY)
 gemini_model = genai.GenerativeModel("gemini-2.5-flash")
@@ -77,6 +77,7 @@ def init_db():
                 CREATE TABLE IF NOT EXISTS extractions (
                     id         SERIAL PRIMARY KEY,
                     user_id    INTEGER NOT NULL REFERENCES users(id),
+                    tipo       TEXT NOT NULL DEFAULT 'Etiqueta',
                     fecha      TEXT NOT NULL,
                     nhc        TEXT,
                     nombre     TEXT,
@@ -85,6 +86,11 @@ def init_db():
                     entidad    TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
+            """)
+            # Add tipo column if it doesn't exist (for existing deployments)
+            cur.execute("""
+                ALTER TABLE extractions
+                ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'Etiqueta'
             """)
         conn.commit()
     finally:
@@ -127,30 +133,54 @@ def create_user(username: str, email: str, password: str):
         conn.close()
 
 
-def save_extraction(user_id: int, fecha: str, nhc: str, nombre: str,
-                    ptc: str, medico: str, entidad: str):
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """INSERT INTO extractions (user_id, fecha, nhc, nombre, ptc, medico, entidad)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                (user_id, fecha, nhc, nombre, ptc, medico, entidad),
-            )
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def get_extractions(user_id: int) -> list:
+def save_extraction(user_id: int, tipo: str, fecha: str, nhc: str,
+                    nombre: str, ptc: str, medico: str, entidad: str) -> dict:
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT * FROM extractions WHERE user_id = %s ORDER BY created_at ASC",
-                (user_id,)
+                """INSERT INTO extractions (user_id, tipo, fecha, nhc, nombre, ptc, medico, entidad)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                   RETURNING id, tipo, fecha, nhc, nombre, ptc, medico, entidad""",
+                (user_id, tipo, fecha, nhc, nombre, ptc, medico, entidad),
             )
+            row = cur.fetchone()
+        conn.commit()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def get_extractions(user_id: int, tipo: Optional[str] = None) -> list:
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if tipo:
+                cur.execute(
+                    "SELECT * FROM extractions WHERE user_id = %s AND tipo = %s ORDER BY created_at ASC",
+                    (user_id, tipo)
+                )
+            else:
+                cur.execute(
+                    "SELECT * FROM extractions WHERE user_id = %s ORDER BY created_at ASC",
+                    (user_id,)
+                )
             return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def delete_extractions_by_ids(user_id: int, ids: List[int]) -> int:
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM extractions WHERE user_id = %s AND id = ANY(%s)",
+                (user_id, ids)
+            )
+            count = cur.rowcount
+        conn.commit()
+        return count
     finally:
         conn.close()
 
@@ -256,15 +286,27 @@ async def me(request: Request):
 # ---------------------------------------------------------------------------
 
 @app.get("/extractions")
-async def list_extractions(request: Request):
+async def list_extractions(request: Request, tipo: Optional[str] = Query(None)):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
-    return get_extractions(user["user_id"])
+    return get_extractions(user["user_id"], tipo)
 
 
-@app.post("/extract")
-async def extract(request: Request, file: UploadFile = File(...)):
+@app.delete("/extractions")
+async def delete_extractions(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="No autenticado")
+    body = await request.json()
+    ids = body.get("ids", [])
+    if not ids:
+        raise HTTPException(status_code=400, detail="No se proporcionaron IDs")
+    count = delete_extractions_by_ids(user["user_id"], ids)
+    return {"deleted": count}
+
+
+async def _do_extract(request: Request, file: UploadFile, tipo: str):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
@@ -298,9 +340,15 @@ async def extract(request: Request, file: UploadFile = File(...)):
     medico  = extracted.get("medico", "")
     entidad = extracted.get("entidad", "")
 
-    save_extraction(user["user_id"], fecha, nhc, nombre, ptc, medico, entidad)
+    row = save_extraction(user["user_id"], tipo, fecha, nhc, nombre, ptc, medico, entidad)
+    return row
 
-    return {
-        "fecha": fecha, "nhc": nhc, "nombre": nombre,
-        "ptc": ptc, "medico": medico, "entidad": entidad,
-    }
+
+@app.post("/extract")
+async def extract(request: Request, file: UploadFile = File(...)):
+    return await _do_extract(request, file, tipo="Etiqueta")
+
+
+@app.post("/extract/ficha")
+async def extract_ficha(request: Request, file: UploadFile = File(...)):
+    return await _do_extract(request, file, tipo="Ficha Medica")

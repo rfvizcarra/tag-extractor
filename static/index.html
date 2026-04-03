@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Extractor de Documentos Médicos</title>
+  <title>MedExtract</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14,7 +14,9 @@
       color: #1a202c;
     }
 
-    /* ── AUTH ── */
+    /* ══════════════════════════════════════════════════
+       AUTH
+    ══════════════════════════════════════════════════ */
     #auth-view {
       display: flex;
       align-items: center;
@@ -31,36 +33,23 @@
       width: 100%;
       max-width: 400px;
     }
-
-    .auth-card h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: .25rem; }
+    .auth-card h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: .25rem; }
     .auth-card p  { color: #718096; font-size: .9rem; margin-bottom: 1.5rem; }
 
     .form-group { margin-bottom: 1rem; }
-    .form-group label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .35rem; color: #4a5568; }
-
+    .form-group label { display: block; font-size: .83rem; font-weight: 600; margin-bottom: .3rem; color: #4a5568; }
     input[type=text], input[type=email], input[type=password] {
-      width: 100%;
-      padding: .65rem .9rem;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 8px;
-      font-size: .95rem;
-      transition: border-color .2s;
-      outline: none;
+      width: 100%; padding: .65rem .9rem;
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-size: .95rem; outline: none; transition: border-color .2s;
     }
     input:focus { border-color: #5a67d8; }
 
     .btn-primary {
-      width: 100%;
-      padding: .75rem;
-      background: #5a67d8;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background .2s;
-      margin-top: .5rem;
+      width: 100%; padding: .75rem;
+      background: #5a67d8; color: #fff; border: none;
+      border-radius: 8px; font-size: 1rem; font-weight: 600;
+      cursor: pointer; transition: background .2s; margin-top: .5rem;
     }
     .btn-primary:hover { background: #4c51bf; }
     .btn-primary:disabled { background: #a0aec0; cursor: not-allowed; }
@@ -69,164 +58,225 @@
     .auth-switch a { color: #5a67d8; font-weight: 600; cursor: pointer; text-decoration: none; }
     .auth-switch a:hover { text-decoration: underline; }
 
-    .alert {
-      padding: .65rem .9rem;
-      border-radius: 8px;
-      font-size: .88rem;
-      margin-bottom: 1rem;
-    }
+    .alert { padding: .65rem .9rem; border-radius: 8px; font-size: .88rem; margin-bottom: 1rem; }
     .alert-error { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
-    .alert-success { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
 
-    /* ── APP ── */
-    #app-view { display: none; flex-direction: column; min-height: 100vh; }
+    /* ══════════════════════════════════════════════════
+       APP LAYOUT
+    ══════════════════════════════════════════════════ */
+    #app-view {
+      display: none;
+      min-height: 100vh;
+    }
 
-    header {
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
       background: #fff;
-      border-bottom: 1px solid #e2e8f0;
-      padding: 1rem 2rem;
+      border-right: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 10;
+    }
+
+    .sidebar-logo {
+      padding: 1.5rem 1.25rem 1rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #2d3748;
+      border-bottom: 1px solid #f0f4f8;
+      letter-spacing: -.01em;
+    }
+    .sidebar-logo span { color: #5a67d8; }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: .75rem .75rem;
+    }
+
+    .nav-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: .65rem;
+      padding: .65rem .9rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      font-weight: 500;
+      color: #4a5568;
+      cursor: pointer;
+      transition: all .15s;
+      margin-bottom: .2rem;
+      user-select: none;
     }
-    .header-logo { font-size: 1.15rem; font-weight: 700; color: #2d3748; }
-    .header-logo span { color: #5a67d8; }
-    .header-user { display: flex; align-items: center; gap: 1rem; font-size: .9rem; color: #4a5568; }
+    .nav-item:hover { background: #f0f4f8; color: #2d3748; }
+    .nav-item.active { background: #ebf4ff; color: #5a67d8; font-weight: 600; }
+    .nav-item .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid #f0f4f8;
+      font-size: .85rem;
+    }
+    .sidebar-username {
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: .5rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .btn-logout {
-      padding: .4rem .9rem;
+      width: 100%;
+      padding: .45rem;
       border: 1.5px solid #e2e8f0;
       border-radius: 8px;
       background: #fff;
-      font-size: .85rem;
+      font-size: .83rem;
       cursor: pointer;
-      color: #4a5568;
+      color: #718096;
       transition: all .2s;
     }
     .btn-logout:hover { border-color: #fc8181; color: #c53030; }
 
-    main { flex: 1; padding: 2rem; max-width: 1100px; width: 100%; margin: 0 auto; }
+    /* ── Main content ── */
+    .content {
+      margin-left: 220px;
+      flex: 1;
+      padding: 2rem;
+      min-height: 100vh;
+    }
 
-    /* ── UPLOAD ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .page-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      color: #2d3748;
+    }
+
+    /* ══════════════════════════════════════════════════
+       UPLOAD ZONE
+    ══════════════════════════════════════════════════ */
     .upload-zone {
       border: 2.5px dashed #c3d0e8;
       border-radius: 16px;
       background: #fff;
-      padding: 3rem 2rem;
+      padding: 2.5rem 2rem;
       text-align: center;
       cursor: pointer;
       transition: all .2s;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
     .upload-zone:hover, .upload-zone.drag-over {
-      border-color: #5a67d8;
-      background: #ebf0ff;
+      border-color: #5a67d8; background: #ebf0ff;
     }
-    .upload-zone .icon { font-size: 3rem; margin-bottom: .75rem; }
-    .upload-zone h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: .4rem; }
-    .upload-zone p  { color: #718096; font-size: .88rem; }
+    .upload-zone .icon { font-size: 2.5rem; margin-bottom: .6rem; }
+    .upload-zone h2 { font-size: 1rem; font-weight: 600; margin-bottom: .3rem; }
+    .upload-zone p  { color: #718096; font-size: .85rem; }
     .upload-zone input { display: none; }
 
-    .upload-status {
-      margin-top: 1rem;
-      font-size: .9rem;
-      font-weight: 500;
-    }
+    .upload-status { margin-top: .75rem; font-size: .88rem; font-weight: 500; min-height: 1.2em; }
     .upload-status.loading { color: #5a67d8; }
     .upload-status.error   { color: #c53030; }
     .upload-status.success { color: #276749; }
 
-    /* ── TABLE ── */
-    .table-section { background: #fff; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,.06); overflow: hidden; }
+    /* ══════════════════════════════════════════════════
+       TABLE CARD
+    ══════════════════════════════════════════════════ */
+    .table-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      overflow: hidden;
+    }
 
     .table-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 1.25rem 1.5rem;
+      padding: 1rem 1.25rem;
       border-bottom: 1px solid #e2e8f0;
       flex-wrap: wrap;
-      gap: .75rem;
+      gap: .6rem;
     }
-    .table-header h2 { font-size: 1rem; font-weight: 700; }
+    .table-header h2 { font-size: .95rem; font-weight: 700; }
 
-    .table-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .table-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
 
-    .btn-action {
-      padding: .45rem 1rem;
-      border-radius: 8px;
-      font-size: .83rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1.5px solid #e2e8f0;
-      background: #fff;
-      color: #4a5568;
-      transition: all .2s;
-      display: flex;
-      align-items: center;
-      gap: .35rem;
-    }
-    .btn-action:hover { border-color: #5a67d8; color: #5a67d8; }
-    .btn-action.danger:hover { border-color: #fc8181; color: #c53030; }
-    .btn-action.csv { border-color: #48bb78; color: #276749; }
-    .btn-action.csv:hover { background: #f0fff4; }
+    .btn { padding: .42rem .9rem; border-radius: 8px; font-size: .82rem; font-weight: 600; cursor: pointer; border: 1.5px solid; transition: all .2s; display: inline-flex; align-items: center; gap: .3rem; }
+    .btn-default { border-color: #e2e8f0; background: #fff; color: #4a5568; }
+    .btn-default:hover { border-color: #5a67d8; color: #5a67d8; }
+    .btn-green { border-color: #68d391; background: #fff; color: #276749; }
+    .btn-green:hover { background: #f0fff4; }
+    .btn-red { border-color: #fc8181; background: #fff; color: #c53030; }
+    .btn-red:hover { background: #fff5f5; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
 
     .table-wrap { overflow-x: auto; }
 
     table { width: 100%; border-collapse: collapse; font-size: .88rem; }
     thead th {
-      background: #f7fafc;
-      padding: .75rem 1rem;
-      text-align: left;
-      font-size: .75rem;
-      font-weight: 700;
-      color: #718096;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-      border-bottom: 1px solid #e2e8f0;
+      background: #f7fafc; padding: .65rem 1rem;
+      text-align: left; font-size: .73rem; font-weight: 700;
+      color: #718096; letter-spacing: .05em; text-transform: uppercase;
+      border-bottom: 1px solid #e2e8f0; white-space: nowrap;
     }
     tbody tr { border-bottom: 1px solid #f0f4f8; transition: background .15s; }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: #f7fafc; }
-    tbody td { padding: .75rem 1rem; color: #2d3748; }
-    tbody td.nhc { color: #5a67d8; font-weight: 600; font-family: monospace; }
-    tbody td.nombre { font-weight: 500; }
-    tbody td.num { color: #a0aec0; font-size: .8rem; }
+    tbody tr.selected { background: #ebf4ff; }
+    tbody td { padding: .7rem 1rem; color: #2d3748; vertical-align: middle; }
+    .td-num  { color: #a0aec0; font-size: .78rem; width: 2rem; }
+    .td-nhc  { color: #5a67d8; font-weight: 600; font-family: monospace; }
+    .td-nombre { font-weight: 500; }
+    .td-tipo-etiqueta { color: #276749; background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 20px; padding: .15rem .6rem; font-size: .75rem; font-weight: 600; white-space: nowrap; }
+    .td-tipo-ficha    { color: #2b6cb0; background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 20px; padding: .15rem .6rem; font-size: .75rem; font-weight: 600; white-space: nowrap; }
 
     .table-footer {
-      padding: .75rem 1.5rem;
+      padding: .65rem 1.25rem;
       border-top: 1px solid #f0f4f8;
-      font-size: .82rem;
+      font-size: .8rem;
       color: #a0aec0;
-      text-align: right;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .empty-state {
-      padding: 3rem;
-      text-align: center;
-      color: #a0aec0;
-      font-size: .92rem;
-    }
+    .empty-state { padding: 3rem; text-align: center; color: #a0aec0; font-size: .92rem; }
 
-    /* ── SPINNER ── */
+    input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: #5a67d8; }
+
+    /* ══════════════════════════════════════════════════
+       SPINNER
+    ══════════════════════════════════════════════════ */
     .spinner {
       display: inline-block;
-      width: 16px; height: 16px;
-      border: 2.5px solid #c3d0e8;
+      width: 14px; height: 14px;
+      border: 2px solid #c3d0e8;
       border-top-color: #5a67d8;
       border-radius: 50%;
       animation: spin .7s linear infinite;
       vertical-align: middle;
-      margin-right: .4rem;
+      margin-right: .3rem;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-<!-- ════════════════════════════════ AUTH VIEW ════════════════════════════════ -->
+<!-- ══════════════════════════════════ AUTH ══════════════════════════════════ -->
 <div id="auth-view">
   <div class="auth-card">
-
     <!-- LOGIN -->
     <div id="login-panel">
       <h1>Iniciar sesión</h1>
@@ -268,74 +318,168 @@
       <button class="btn-primary" onclick="doRegister()">Crear cuenta</button>
       <p class="auth-switch">¿Ya tienes cuenta? <a onclick="showLogin()">Iniciar sesión</a></p>
     </div>
-
   </div>
 </div>
 
-<!-- ════════════════════════════════ APP VIEW ════════════════════════════════ -->
+<!-- ══════════════════════════════════ APP ══════════════════════════════════ -->
 <div id="app-view">
+  <div class="layout">
 
-  <header>
-    <div class="header-logo">🏥 <span>MedExtract</span></div>
-    <div class="header-user">
-      <span id="header-username"></span>
-      <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
-    </div>
-  </header>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">🏥 <span>MedExtract</span></div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" id="nav-etiquetas" onclick="showView('etiquetas')">
+          <span class="nav-icon">🏷️</span> Etiquetas
+        </div>
+        <div class="nav-item" id="nav-ficha" onclick="showView('ficha')">
+          <span class="nav-icon">📋</span> Ficha Médica
+        </div>
+        <div class="nav-item" id="nav-historia" onclick="showView('historia')">
+          <span class="nav-icon">📊</span> Historia
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-username" id="sidebar-username"></div>
+        <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+      </div>
+    </aside>
 
-  <main>
+    <!-- Content -->
+    <div class="content">
 
-    <!-- Upload -->
-    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-      <div class="icon">📄</div>
-      <h2>Sube un documento médico</h2>
-      <p>Arrastra una imagen aquí o haz clic para seleccionar</p>
-      <p style="margin-top:.4rem; font-size:.8rem; color:#a0aec0">JPG, PNG, WEBP, PDF</p>
-      <input type="file" id="file-input" accept="image/*,application/pdf" onchange="handleFile(this.files[0])" />
-      <div id="upload-status" class="upload-status"></div>
-    </div>
+      <!-- ── ETIQUETAS ── -->
+      <div id="view-etiquetas" class="view active">
+        <div class="page-title">Etiquetas</div>
 
-    <!-- Table -->
-    <div class="table-section">
-      <div class="table-header">
-        <h2>Datos extraídos</h2>
-        <div class="table-actions">
-          <button class="btn-action" onclick="copyAll()">📋 Copiar todo</button>
-          <button class="btn-action csv" onclick="downloadCSV()">⬇ Descargar CSV</button>
-          <button class="btn-action danger" onclick="clearTable()">🗑 Limpiar tabla</button>
+        <div class="upload-zone" id="drop-etiquetas"
+             onclick="document.getElementById('file-etiquetas').click()">
+          <div class="icon">📄</div>
+          <h2>Sube un documento de consulta</h2>
+          <p>Arrastra una imagen aquí o haz clic para seleccionar</p>
+          <p style="margin-top:.3rem;font-size:.78rem;color:#a0aec0">JPG, PNG, WEBP</p>
+          <input type="file" id="file-etiquetas" accept="image/*"
+                 onchange="handleUpload(this.files[0],'etiquetas')" />
+          <div id="status-etiquetas" class="upload-status"></div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <h2>Datos extraídos</h2>
+            <div class="table-actions">
+              <button class="btn btn-default" onclick="copyAll('etiquetas')">📋 Copiar todo</button>
+              <button class="btn btn-green"   onclick="downloadCSV('etiquetas')">⬇ Descargar CSV</button>
+              <button class="btn btn-red"     onclick="clearView('etiquetas')">🗑 Limpiar</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Fecha</th><th>NHC</th><th>Nombre</th>
+                <th>PTC</th><th>Médico</th><th>Entidad</th>
+              </tr></thead>
+              <tbody id="body-etiquetas">
+                <tr><td colspan="7" class="empty-state">Sube un documento para empezar</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span id="count-etiquetas">0 filas</span>
+          </div>
         </div>
       </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Fecha</th>
-              <th>NHC</th>
-              <th>Nombre</th>
-              <th>PTC</th>
-              <th>Médico</th>
-              <th>Entidad</th>
-            </tr>
-          </thead>
-          <tbody id="results-body">
-            <tr><td colspan="7" class="empty-state">No hay extracciones todavía. Sube un documento para empezar.</td></tr>
-          </tbody>
-        </table>
+      <!-- ── FICHA MÉDICA ── -->
+      <div id="view-ficha" class="view">
+        <div class="page-title">Ficha Médica</div>
+
+        <div class="upload-zone" id="drop-ficha"
+             onclick="document.getElementById('file-ficha').click()">
+          <div class="icon">📋</div>
+          <h2>Sube una ficha médica</h2>
+          <p>Arrastra una imagen aquí o haz clic para seleccionar</p>
+          <p style="margin-top:.3rem;font-size:.78rem;color:#a0aec0">JPG, PNG, WEBP</p>
+          <input type="file" id="file-ficha" accept="image/*"
+                 onchange="handleUpload(this.files[0],'ficha')" />
+          <div id="status-ficha" class="upload-status"></div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <h2>Datos extraídos</h2>
+            <div class="table-actions">
+              <button class="btn btn-default" onclick="copyAll('ficha')">📋 Copiar todo</button>
+              <button class="btn btn-green"   onclick="downloadCSV('ficha')">⬇ Descargar CSV</button>
+              <button class="btn btn-red"     onclick="clearView('ficha')">🗑 Limpiar</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Fecha</th><th>NHC</th><th>Nombre</th>
+                <th>PTC</th><th>Médico</th><th>Entidad</th>
+              </tr></thead>
+              <tbody id="body-ficha">
+                <tr><td colspan="7" class="empty-state">Sube un documento para empezar</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span id="count-ficha">0 filas</span>
+          </div>
+        </div>
       </div>
 
-      <div class="table-footer" id="row-count">0 filas en la tabla</div>
-    </div>
+      <!-- ── HISTORIA ── -->
+      <div id="view-historia" class="view">
+        <div class="page-title">Historia</div>
 
-  </main>
-</div>
+        <div class="table-card">
+          <div class="table-header">
+            <h2>Todas las extracciones</h2>
+            <div class="table-actions">
+              <span id="historia-selected-count" style="font-size:.82rem;color:#718096;display:none"></span>
+              <button class="btn btn-default" id="btn-copy-selected"
+                      onclick="copySelected()" disabled>📋 Copiar seleccionados</button>
+              <button class="btn btn-red"     id="btn-delete-selected"
+                      onclick="deleteSelected()" disabled>🗑 Eliminar seleccionados</button>
+              <button class="btn btn-default" onclick="loadHistoria()">↻ Actualizar</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th><input type="checkbox" id="check-all" onchange="toggleAll(this)"></th>
+                <th>#</th><th>Fecha</th><th>NHC</th><th>Nombre</th>
+                <th>PTC</th><th>Médico</th><th>Entidad</th><th>Tipo</th>
+              </tr></thead>
+              <tbody id="body-historia">
+                <tr><td colspan="9" class="empty-state">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span id="count-historia">0 filas</span>
+            <span id="historia-sel-label" style="color:#5a67d8;font-weight:600;display:none"></span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /layout -->
+</div><!-- /app-view -->
 
 <script>
   /* ── State ── */
-  let rows = [];
+  const state = {
+    etiquetas: [],
+    ficha: [],
+    historia: [],
+  };
 
-  /* ── Auth switching ── */
+  /* ═══════════════════════════════════════
+     AUTH
+  ═══════════════════════════════════════ */
   function showRegister() {
     document.getElementById('login-panel').style.display = 'none';
     document.getElementById('register-panel').style.display = '';
@@ -349,211 +493,337 @@
   function clearAlerts() {
     ['login-alert','register-alert'].forEach(id => {
       const el = document.getElementById(id);
-      el.style.display = 'none';
-      el.textContent = '';
+      el.style.display = 'none'; el.textContent = '';
     });
   }
   function showAlert(id, msg) {
     const el = document.getElementById(id);
-    el.textContent = msg;
-    el.style.display = '';
+    el.textContent = msg; el.style.display = '';
   }
 
-  /* ── Login ── */
   async function doLogin() {
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
     if (!username || !password) { showAlert('login-alert', 'Completa todos los campos.'); return; }
-
     try {
       const res = await fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ username, password })
       });
       const data = await res.json();
       if (!res.ok) { showAlert('login-alert', data.detail || 'Error al iniciar sesión'); return; }
       enterApp(data.username);
-    } catch {
-      showAlert('login-alert', 'Error de red. Inténtalo de nuevo.');
-    }
+    } catch { showAlert('login-alert', 'Error de red. Inténtalo de nuevo.'); }
   }
 
-  /* ── Register ── */
   async function doRegister() {
     const username = document.getElementById('reg-username').value.trim();
     const email    = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
     const confirm  = document.getElementById('reg-confirm').value;
     if (!username || !email || !password) { showAlert('register-alert', 'Completa todos los campos.'); return; }
-
     try {
       const res = await fetch('/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ username, email, password, confirm_password: confirm })
       });
       const data = await res.json();
       if (!res.ok) { showAlert('register-alert', data.detail || 'Error al registrarse'); return; }
       enterApp(data.username);
-    } catch {
-      showAlert('register-alert', 'Error de red. Inténtalo de nuevo.');
-    }
+    } catch { showAlert('register-alert', 'Error de red. Inténtalo de nuevo.'); }
   }
 
-  /* ── Logout ── */
   async function doLogout() {
     await fetch('/auth/logout', { method: 'POST' });
-    rows = [];
+    state.etiquetas = []; state.ficha = []; state.historia = [];
     document.getElementById('app-view').style.display = 'none';
     document.getElementById('auth-view').style.display = 'flex';
-    document.getElementById('login-username').value = '';
-    document.getElementById('login-password').value = '';
     showLogin();
   }
 
-  /* ── Enter app ── */
   async function enterApp(username) {
-    document.getElementById('header-username').textContent = username;
+    document.getElementById('sidebar-username').textContent = username;
     document.getElementById('auth-view').style.display = 'none';
-    document.getElementById('app-view').style.display = 'flex';
-    await loadExtractions();
+    document.getElementById('app-view').style.display = 'block';
+    showView('etiquetas');
+    await loadSavedExtractions();
   }
 
-  /* ── Load saved extractions ── */
-  async function loadExtractions() {
+  async function loadSavedExtractions() {
     try {
-      const res = await fetch('/extractions');
-      if (!res.ok) return;
-      const data = await res.json();
-      rows = data.map(r => ({
-        fecha: r.fecha, nhc: r.nhc, nombre: r.nombre,
-        ptc: r.ptc, medico: r.medico, entidad: r.entidad
-      }));
-      renderTable();
+      const [etRes, fichaRes] = await Promise.all([
+        fetch('/extractions?tipo=Etiqueta'),
+        fetch('/extractions?tipo=Ficha%20Medica'),
+      ]);
+      if (etRes.ok)    state.etiquetas = await etRes.json();
+      if (fichaRes.ok) state.ficha     = await fichaRes.json();
+      renderTable('etiquetas');
+      renderTable('ficha');
     } catch { /* ignore */ }
   }
 
-  /* ── Upload ── */
-  const dropZone = document.getElementById('drop-zone');
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault(); dropZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
+  /* ═══════════════════════════════════════
+     NAVIGATION
+  ═══════════════════════════════════════ */
+  function showView(name) {
+    ['etiquetas','ficha','historia'].forEach(v => {
+      document.getElementById('view-' + v).classList.toggle('active', v === name);
+      document.getElementById('nav-' + v).classList.toggle('active', v === name);
+    });
+    if (name === 'historia') loadHistoria();
+  }
+
+  /* ═══════════════════════════════════════
+     UPLOAD
+  ═══════════════════════════════════════ */
+  ['etiquetas','ficha'].forEach(view => {
+    const zone = document.getElementById('drop-' + view);
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleUpload(file, view);
+    });
   });
 
-  function setStatus(msg, type) {
-    const el = document.getElementById('upload-status');
+  function setStatus(view, msg, type) {
+    const el = document.getElementById('status-' + view);
     el.className = 'upload-status ' + type;
     el.innerHTML = msg;
   }
 
-  async function handleFile(file) {
+  async function handleUpload(file, view) {
     if (!file) return;
-    setStatus('<span class="spinner"></span>Extrayendo datos...', 'loading');
+    setStatus(view, '<span class="spinner"></span>Extrayendo datos...', 'loading');
 
+    const endpoint = view === 'ficha' ? '/extract/ficha' : '/extract';
     const form = new FormData();
     form.append('file', file);
 
     try {
-      const res = await fetch('/extract', { method: 'POST', body: form });
+      const res  = await fetch(endpoint, { method: 'POST', body: form });
       const data = await res.json();
-      if (!res.ok) { setStatus('❌ ' + (data.detail || 'Error al extraer'), 'error'); return; }
+      if (!res.ok) { setStatus(view, '❌ ' + (data.detail || 'Error al extraer'), 'error'); return; }
 
-      rows.push(data);
-      renderTable();
-      setStatus('✅ Datos extraídos correctamente', 'success');
-      document.getElementById('file-input').value = '';
-      setTimeout(() => setStatus('', ''), 3000);
+      state[view].push(data);
+      renderTable(view);
+      setStatus(view, '✅ Datos extraídos correctamente', 'success');
+      document.getElementById('file-' + view).value = '';
+      setTimeout(() => setStatus(view, '', ''), 3000);
     } catch {
-      setStatus('❌ Error de red. Inténtalo de nuevo.', 'error');
+      setStatus(view, '❌ Error de red. Inténtalo de nuevo.', 'error');
     }
   }
 
-  /* ── Render table ── */
-  function renderTable() {
-    const tbody = document.getElementById('results-body');
-    if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay extracciones todavía. Sube un documento para empezar.</td></tr>';
-      document.getElementById('row-count').textContent = '0 filas en la tabla';
+  /* ═══════════════════════════════════════
+     RENDER TABLES (Etiquetas / Ficha)
+  ═══════════════════════════════════════ */
+  function renderTable(view) {
+    const rows  = state[view];
+    const tbody = document.getElementById('body-' + view);
+    const count = document.getElementById('count-' + view);
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Sube un documento para empezar</td></tr>`;
+      count.textContent = '0 filas';
       return;
     }
     tbody.innerHTML = rows.map((r, i) => `
       <tr>
-        <td class="num">${i + 1}</td>
-        <td>${r.fecha || ''}</td>
-        <td class="nhc">${r.nhc || ''}</td>
-        <td class="nombre">${r.nombre || ''}</td>
-        <td>${r.ptc || '—'}</td>
-        <td>${r.medico || ''}</td>
-        <td>${r.entidad || ''}</td>
-      </tr>
-    `).join('');
-    const n = rows.length;
-    document.getElementById('row-count').textContent = `${n} ${n === 1 ? 'fila' : 'filas'} en la tabla`;
+        <td class="td-num">${i+1}</td>
+        <td>${r.fecha||''}</td>
+        <td class="td-nhc">${r.nhc||''}</td>
+        <td class="td-nombre">${r.nombre||''}</td>
+        <td>${r.ptc||'—'}</td>
+        <td>${r.medico||''}</td>
+        <td>${r.entidad||''}</td>
+      </tr>`).join('');
+    count.textContent = `${rows.length} ${rows.length===1?'fila':'filas'}`;
   }
 
-  /* ── Copy all (values only, no headers) ── */
-  function copyAll() {
-    if (rows.length === 0) return;
+  /* ═══════════════════════════════════════
+     HISTORIA
+  ═══════════════════════════════════════ */
+  async function loadHistoria() {
+    document.getElementById('body-historia').innerHTML =
+      '<tr><td colspan="9" class="empty-state"><span class="spinner"></span> Cargando...</td></tr>';
+    try {
+      const res = await fetch('/extractions');
+      if (!res.ok) return;
+      state.historia = await res.json();
+      renderHistoria();
+    } catch { /* ignore */ }
+  }
+
+  function renderHistoria() {
+    const rows  = state.historia;
+    const tbody = document.getElementById('body-historia');
+    document.getElementById('count-historia').textContent =
+      `${rows.length} ${rows.length===1?'fila':'filas'}`;
+    document.getElementById('check-all').checked = false;
+    updateSelectionUI();
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No hay extracciones todavía</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map((r, i) => {
+      const tipoCls = r.tipo === 'Etiqueta' ? 'td-tipo-etiqueta' : 'td-tipo-ficha';
+      return `
+        <tr id="hrow-${r.id}">
+          <td><input type="checkbox" class="h-check" data-id="${r.id}" onchange="onCheckChange()"></td>
+          <td class="td-num">${i+1}</td>
+          <td>${r.fecha||''}</td>
+          <td class="td-nhc">${r.nhc||''}</td>
+          <td class="td-nombre">${r.nombre||''}</td>
+          <td>${r.ptc||'—'}</td>
+          <td>${r.medico||''}</td>
+          <td>${r.entidad||''}</td>
+          <td><span class="${tipoCls}">${r.tipo||''}</span></td>
+        </tr>`;
+    }).join('');
+  }
+
+  function toggleAll(checkbox) {
+    document.querySelectorAll('.h-check').forEach(c => {
+      c.checked = checkbox.checked;
+      c.closest('tr').classList.toggle('selected', checkbox.checked);
+    });
+    updateSelectionUI();
+  }
+
+  function onCheckChange() {
+    const all   = document.querySelectorAll('.h-check');
+    const checked = document.querySelectorAll('.h-check:checked');
+    document.getElementById('check-all').checked = all.length && checked.length === all.length;
+    document.querySelectorAll('.h-check').forEach(c => {
+      c.closest('tr').classList.toggle('selected', c.checked);
+    });
+    updateSelectionUI();
+  }
+
+  function getSelectedIds() {
+    return [...document.querySelectorAll('.h-check:checked')].map(c => parseInt(c.dataset.id));
+  }
+
+  function updateSelectionUI() {
+    const ids = getSelectedIds();
+    const n   = ids.length;
+    const btnCopy = document.getElementById('btn-copy-selected');
+    const btnDel  = document.getElementById('btn-delete-selected');
+    const selCount = document.getElementById('historia-selected-count');
+    const selLabel = document.getElementById('historia-sel-label');
+
+    btnCopy.disabled = n === 0;
+    btnDel.disabled  = n === 0;
+    if (n > 0) {
+      selCount.textContent = `${n} seleccionado${n!==1?'s':''}`;
+      selCount.style.display = '';
+      selLabel.textContent = `${n} seleccionado${n!==1?'s':''}`;
+      selLabel.style.display = '';
+    } else {
+      selCount.style.display = 'none';
+      selLabel.style.display = 'none';
+    }
+  }
+
+  function copySelected() {
+    const ids  = getSelectedIds();
+    const rows = state.historia.filter(r => ids.includes(r.id));
+    const text = rows.map(r =>
+      [r.fecha, r.nhc, r.nombre, r.ptc, r.medico, r.entidad, r.tipo].join('\t')
+    ).join('\n');
+    navigator.clipboard.writeText(text).then(() => showToast(`${rows.length} fila(s) copiada(s)`));
+  }
+
+  async function deleteSelected() {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    if (!confirm(`¿Eliminar ${ids.length} registro(s) seleccionado(s)? Esta acción no se puede deshacer.`)) return;
+
+    try {
+      const res = await fetch('/extractions', {
+        method: 'DELETE',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ ids })
+      });
+      if (!res.ok) { showToast('Error al eliminar'); return; }
+      const data = await res.json();
+      showToast(`${data.deleted} registro(s) eliminado(s)`);
+      await loadHistoria();
+      // Also refresh etiquetas/ficha in memory
+      await loadSavedExtractions();
+    } catch { showToast('Error de red'); }
+  }
+
+  /* ═══════════════════════════════════════
+     COPY / CSV (Etiquetas & Ficha)
+  ═══════════════════════════════════════ */
+  function copyAll(view) {
+    const rows = state[view];
+    if (!rows.length) return;
     const text = rows.map(r =>
       [r.fecha, r.nhc, r.nombre, r.ptc, r.medico, r.entidad].join('\t')
     ).join('\n');
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = event.target.closest('button');
-      const orig = btn.innerHTML;
-      btn.innerHTML = '✅ Copiado';
-      setTimeout(() => btn.innerHTML = orig, 2000);
-    });
+    navigator.clipboard.writeText(text).then(() => showToast('Copiado al portapapeles'));
   }
 
-  /* ── Download CSV ── */
-  function downloadCSV() {
-    if (rows.length === 0) return;
-    const headers = ['Fecha', 'NHC', 'Nombre', 'PTC', 'Médico', 'Entidad'];
-    const csvRows = [
-      headers.join(','),
-      ...rows.map(r =>
-        [r.fecha, r.nhc, r.nombre, r.ptc, r.medico, r.entidad]
-          .map(v => `"${(v || '').replace(/"/g, '""')}"`)
-          .join(',')
-      )
-    ];
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  function downloadCSV(view) {
+    const rows = state[view];
+    if (!rows.length) return;
+    const headers = ['Fecha','NHC','Nombre','PTC','Médico','Entidad'];
+    const q = v => `"${(v||'').replace(/"/g,'""')}"`;
+    const csv = [
+      headers.map(q).join(','),
+      ...rows.map(r => [r.fecha,r.nhc,r.nombre,r.ptc,r.medico,r.entidad].map(q).join(','))
+    ].join('\n');
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `extracciones_${new Date().toISOString().slice(0,10)}.csv`;
+    a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
+    a.download = `${view}_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
   }
 
-  /* ── Clear table ── */
-  function clearTable() {
-    if (rows.length === 0) return;
-    if (!confirm('¿Seguro que quieres limpiar la tabla? Los datos guardados se mantendrán en el servidor.')) return;
-    rows = [];
-    renderTable();
+  function clearView(view) {
+    if (!state[view].length) return;
+    if (!confirm('¿Limpiar la vista? Los datos guardados se mantienen en el servidor.')) return;
+    state[view] = [];
+    renderTable(view);
   }
 
-  /* ── On load: check if already logged in ── */
+  /* ═══════════════════════════════════════
+     TOAST
+  ═══════════════════════════════════════ */
+  let toastTimer;
+  function showToast(msg) {
+    let t = document.getElementById('toast');
+    if (!t) {
+      t = document.createElement('div'); t.id = 'toast';
+      Object.assign(t.style, {
+        position:'fixed', bottom:'1.5rem', left:'50%', transform:'translateX(-50%)',
+        background:'#2d3748', color:'#fff', padding:'.6rem 1.4rem',
+        borderRadius:'8px', fontSize:'.88rem', zIndex:'9999',
+        boxShadow:'0 4px 12px rgba(0,0,0,.25)', transition:'opacity .3s',
+      });
+      document.body.appendChild(t);
+    }
+    t.textContent = msg; t.style.opacity = '1';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.style.opacity = '0', 2500);
+  }
+
+  /* ═══════════════════════════════════════
+     BOOT
+  ═══════════════════════════════════════ */
   (async () => {
     try {
       const res = await fetch('/auth/me');
-      if (res.ok) {
-        const data = await res.json();
-        enterApp(data.username);
-      }
+      if (res.ok) { const d = await res.json(); enterApp(d.username); }
     } catch { /* show login */ }
   })();
 
-  /* ── Enter key on login form ── */
-  document.getElementById('login-password').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
-  document.getElementById('login-username').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
+  document.getElementById('login-password').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+  document.getElementById('login-username').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
 </script>
 </body>
 </html>
