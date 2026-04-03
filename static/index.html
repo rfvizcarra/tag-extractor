@@ -259,6 +259,11 @@
     input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: #5a67d8; }
 
     /* ══════════════════════════════════════════════════
+       MOBILE HEADER (hidden on desktop)
+    ══════════════════════════════════════════════════ */
+    .mobile-header { display: none; }
+
+    /* ══════════════════════════════════════════════════
        BOTTOM NAV (mobile only)
     ══════════════════════════════════════════════════ */
     .bottom-nav { display: none; }
@@ -301,6 +306,33 @@
       }
       .bottom-nav-item.active { color: #5a67d8; }
       .bottom-nav-item .bn-icon { font-size: 1.35rem; }
+
+      .mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: .75rem 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+      }
+      .mobile-header-logo { font-size: 1rem; font-weight: 700; color: #2d3748; }
+      .mobile-header-logo span { color: #5a67d8; }
+      .mobile-header-right { display: flex; align-items: center; gap: .6rem; font-size: .82rem; color: #718096; }
+      .mobile-header-right button {
+        padding: .35rem .75rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        font-size: .8rem;
+        cursor: pointer;
+        color: #718096;
+      }
+      .mobile-header-right button:hover { border-color: #fc8181; color: #c53030; }
+
+      .content { padding-top: .75rem; }
 
       .page-title { font-size: 1.05rem; margin-bottom: 1rem; }
 
@@ -441,6 +473,16 @@
 
 <!-- ══════════════════════════════════ APP ══════════════════════════════════ -->
 <div id="app-view">
+
+  <!-- Mobile top header (only visible on small screens) -->
+  <div class="mobile-header">
+    <div class="mobile-header-logo">🏥 <span>MedExtract</span></div>
+    <div class="mobile-header-right">
+      <span id="mobile-username"></span>
+      <button onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </div>
+
   <div class="layout">
 
     <!-- Sidebar -->
@@ -674,6 +716,7 @@
 
   async function enterApp(username) {
     document.getElementById('sidebar-username').textContent = username;
+    document.getElementById('mobile-username').textContent  = username;
     document.getElementById('auth-view').style.display = 'none';
     document.getElementById('app-view').style.display = 'block';
     showView('etiquetas');
