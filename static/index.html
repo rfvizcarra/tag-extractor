@@ -302,20 +302,74 @@
 
       .page-title { font-size: 1.05rem; margin-bottom: 1rem; }
 
-      .upload-zone { padding: 1.5rem 1rem; margin-bottom: 1rem; }
-      .upload-zone .icon { font-size: 2rem; margin-bottom: .4rem; }
-      .upload-zone h2 { font-size: .92rem; }
+      .upload-zone { padding: 1.25rem .9rem; margin-bottom: 1rem; }
+      .upload-zone .icon { font-size: 1.8rem; margin-bottom: .3rem; }
+      .upload-zone h2 { font-size: .9rem; }
+      .upload-zone p { font-size: .78rem; }
 
-      .table-header { padding: .75rem .9rem; gap: .5rem; }
+      .table-header { padding: .75rem .9rem; gap: .4rem; }
       .table-actions { width: 100%; }
-      .btn { flex: 1; justify-content: center; font-size: .76rem; padding: .4rem .4rem; }
-
-      thead th { padding: .5rem .6rem; font-size: .68rem; }
-      tbody td  { padding: .55rem .6rem; font-size: .82rem; }
+      .btn { flex: 1; justify-content: center; font-size: .72rem; padding: .45rem .3rem; }
 
       .table-footer { padding: .5rem .9rem; }
+      .auth-card { padding: 1.75rem 1.1rem; border-radius: 12px; }
 
-      .auth-card { padding: 2rem 1.25rem; border-radius: 12px; }
+      /* ── Card-style rows on mobile ── */
+      .table-wrap { overflow: visible; }
+      table { display: block; }
+      thead { display: none; }
+      tbody { display: block; padding: .6rem; }
+
+      tbody tr {
+        display: block;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        margin-bottom: .65rem;
+        padding: .6rem .75rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      }
+      tbody tr:last-child { margin-bottom: 0; }
+      tbody tr:hover { background: #fff; }
+      tbody tr.selected { background: #ebf4ff; border-color: #90cdf4; }
+
+      tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: .32rem 0;
+        border-bottom: 1px solid #f7fafc;
+        font-size: .88rem;
+        color: #2d3748;
+        gap: .5rem;
+      }
+      tbody td:last-child { border-bottom: none; }
+      tbody td.td-num { display: none; }
+
+      tbody td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        font-size: .7rem;
+        color: #a0aec0;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        flex-shrink: 0;
+        width: 62px;
+        padding-top: .1rem;
+      }
+      /* Checkbox cell */
+      tbody td[data-label="sel"] {
+        justify-content: flex-start;
+        gap: .6rem;
+        padding-bottom: .5rem;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: .1rem;
+      }
+      tbody td[data-label="sel"]::before { display: none; }
+
+      /* Empty state */
+      tbody td.empty-state { display: block; text-align: center; border: none; }
+      tbody td.empty-state::before { display: none; }
     }
 
     /* ══════════════════════════════════════════════════
@@ -707,13 +761,13 @@
     }
     tbody.innerHTML = rows.map((r, i) => `
       <tr>
-        <td class="td-num">${i+1}</td>
-        <td>${r.fecha||''}</td>
-        <td class="td-nhc">${r.nhc||''}</td>
-        <td class="td-nombre">${r.nombre||''}</td>
-        <td>${r.ptc||'—'}</td>
-        <td>${r.medico||''}</td>
-        <td>${r.entidad||''}</td>
+        <td data-label="#"       class="td-num">${i+1}</td>
+        <td data-label="Fecha"                 >${r.fecha||''}</td>
+        <td data-label="NHC"    class="td-nhc" >${r.nhc||''}</td>
+        <td data-label="Nombre" class="td-nombre">${r.nombre||''}</td>
+        <td data-label="PTC"                   >${r.ptc||'—'}</td>
+        <td data-label="Médico"                >${r.medico||''}</td>
+        <td data-label="Entidad"               >${r.entidad||''}</td>
       </tr>`).join('');
     count.textContent = `${rows.length} ${rows.length===1?'fila':'filas'}`;
   }
@@ -748,15 +802,15 @@
       const tipoCls = r.tipo === 'Etiqueta' ? 'td-tipo-etiqueta' : 'td-tipo-ficha';
       return `
         <tr id="hrow-${r.id}">
-          <td><input type="checkbox" class="h-check" data-id="${r.id}" onchange="onCheckChange()"></td>
-          <td class="td-num">${i+1}</td>
-          <td>${r.fecha||''}</td>
-          <td class="td-nhc">${r.nhc||''}</td>
-          <td class="td-nombre">${r.nombre||''}</td>
-          <td>${r.ptc||'—'}</td>
-          <td>${r.medico||''}</td>
-          <td>${r.entidad||''}</td>
-          <td><span class="${tipoCls}">${r.tipo||''}</span></td>
+          <td data-label="sel"><input type="checkbox" class="h-check" data-id="${r.id}" onchange="onCheckChange()"><span style="font-size:.8rem;color:#4a5568;font-weight:500">${r.nombre||r.nhc||''}</span></td>
+          <td data-label="#"       class="td-num">${i+1}</td>
+          <td data-label="Fecha"                 >${r.fecha||''}</td>
+          <td data-label="NHC"    class="td-nhc" >${r.nhc||''}</td>
+          <td data-label="Nombre" class="td-nombre">${r.nombre||''}</td>
+          <td data-label="PTC"                   >${r.ptc||'—'}</td>
+          <td data-label="Médico"                >${r.medico||''}</td>
+          <td data-label="Entidad"               >${r.entidad||''}</td>
+          <td data-label="Tipo"                  ><span class="${tipoCls}">${r.tipo||''}</span></td>
         </tr>`;
     }).join('');
   }
