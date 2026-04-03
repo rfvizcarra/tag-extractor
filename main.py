@@ -87,10 +87,14 @@ def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            # Add tipo column if it doesn't exist (for existing deployments)
+            # Migrations for existing deployments
             cur.execute("""
                 ALTER TABLE extractions
                 ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'Etiqueta'
+            """)
+            cur.execute("""
+                ALTER TABLE extractions
+                ADD COLUMN IF NOT EXISTS copied BOOLEAN NOT NULL DEFAULT FALSE
             """)
         conn.commit()
     finally:
@@ -151,21 +155,37 @@ def save_extraction(user_id: int, tipo: str, fecha: str, nhc: str,
         conn.close()
 
 
-def get_extractions(user_id: int, tipo: Optional[str] = None) -> list:
+def get_extractions(user_id: int, tipo: Optional[str] = None,
+                    copied: Optional[bool] = None) -> list:
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            if tipo:
-                cur.execute(
-                    "SELECT * FROM extractions WHERE user_id = %s AND tipo = %s ORDER BY created_at ASC",
-                    (user_id, tipo)
-                )
-            else:
-                cur.execute(
-                    "SELECT * FROM extractions WHERE user_id = %s ORDER BY created_at ASC",
-                    (user_id,)
-                )
+            query  = "SELECT * FROM extractions WHERE user_id = %s"
+            params = [user_id]
+            if tipo is not None:
+                query += " AND tipo = %s"
+                params.append(tipo)
+            if copied is not None:
+                query += " AND copied = %s"
+                params.append(copied)
+            query += " ORDER BY created_at ASC"
+            cur.execute(query, params)
             return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def mark_extractions_copied(user_id: int, ids: List[int]) -> int:
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE extractions SET copied = TRUE WHERE user_id = %s AND id = ANY(%s)",
+                (user_id, ids)
+            )
+            count = cur.rowcount
+        conn.commit()
+        return count
     finally:
         conn.close()
 
@@ -286,11 +306,28 @@ async def me(request: Request):
 # ---------------------------------------------------------------------------
 
 @app.get("/extractions")
-async def list_extractions(request: Request, tipo: Optional[str] = Query(None)):
+async def list_extractions(
+    request: Request,
+    tipo:   Optional[str]  = Query(None),
+    copied: Optional[bool] = Query(None),
+):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
-    return get_extractions(user["user_id"], tipo)
+    return get_extractions(user["user_id"], tipo, copied)
+
+
+@app.patch("/extractions/mark-copied")
+async def mark_copied(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="No autenticado")
+    body = await request.json()
+    ids  = body.get("ids", [])
+    if not ids:
+        raise HTTPException(status_code=400, detail="No se proporcionaron IDs")
+    count = mark_extractions_copied(user["user_id"], ids)
+    return {"marked": count}
 
 
 @app.delete("/extractions")

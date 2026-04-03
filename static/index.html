@@ -241,6 +241,8 @@
     .td-nombre { font-weight: 500; }
     .td-tipo-etiqueta { color: #276749; background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 20px; padding: .15rem .6rem; font-size: .75rem; font-weight: 600; white-space: nowrap; }
     .td-tipo-ficha    { color: #2b6cb0; background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 20px; padding: .15rem .6rem; font-size: .75rem; font-weight: 600; white-space: nowrap; }
+    .badge-copied     { color: #276749; background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 20px; padding: .15rem .6rem; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+    .badge-pending    { color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 20px; padding: .15rem .6rem; font-size: .72rem; font-weight: 600; white-space: nowrap; }
 
     .table-footer {
       padding: .65rem 1.25rem;
@@ -580,7 +582,7 @@
               <thead><tr>
                 <th><input type="checkbox" id="check-all" onchange="toggleAll(this)"></th>
                 <th>#</th><th>Fecha</th><th>NHC</th><th>Nombre</th>
-                <th>PTC</th><th>Médico</th><th>Entidad</th><th>Tipo</th>
+                <th>PTC</th><th>Médico</th><th>Entidad</th><th>Tipo</th><th>Estado</th>
               </tr></thead>
               <tbody id="body-historia">
                 <tr><td colspan="9" class="empty-state">Cargando...</td></tr>
@@ -680,9 +682,10 @@
 
   async function loadSavedExtractions() {
     try {
+      // Only load records NOT yet copied — these are the pending queue
       const [etRes, fichaRes] = await Promise.all([
-        fetch('/extractions?tipo=Etiqueta'),
-        fetch('/extractions?tipo=Ficha%20Medica'),
+        fetch('/extractions?tipo=Etiqueta&copied=false'),
+        fetch('/extractions?tipo=Ficha%20Medica&copied=false'),
       ]);
       if (etRes.ok)    state.etiquetas = await etRes.json();
       if (fichaRes.ok) state.ficha     = await fichaRes.json();
@@ -795,11 +798,14 @@
     updateSelectionUI();
 
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No hay extracciones todavía</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No hay extracciones todavía</td></tr>`;
       return;
     }
     tbody.innerHTML = rows.map((r, i) => {
-      const tipoCls = r.tipo === 'Etiqueta' ? 'td-tipo-etiqueta' : 'td-tipo-ficha';
+      const tipoCls    = r.tipo === 'Etiqueta' ? 'td-tipo-etiqueta' : 'td-tipo-ficha';
+      const estadoBadge = r.copied
+        ? `<span class="badge-copied">✓ Copiado</span>`
+        : `<span class="badge-pending">⏳ Pendiente</span>`;
       return `
         <tr id="hrow-${r.id}">
           <td data-label="sel"><input type="checkbox" class="h-check" data-id="${r.id}" onchange="onCheckChange()"><span style="font-size:.8rem;color:#4a5568;font-weight:500">${r.nombre||r.nhc||''}</span></td>
@@ -811,6 +817,7 @@
           <td data-label="Médico"                >${r.medico||''}</td>
           <td data-label="Entidad"               >${r.entidad||''}</td>
           <td data-label="Tipo"                  ><span class="${tipoCls}">${r.tipo||''}</span></td>
+          <td data-label="Estado"                >${estadoBadge}</td>
         </tr>`;
     }).join('');
   }
@@ -890,13 +897,30 @@
   /* ═══════════════════════════════════════
      COPY / CSV (Etiquetas & Ficha)
   ═══════════════════════════════════════ */
-  function copyAll(view) {
+  async function copyAll(view) {
     const rows = state[view];
     if (!rows.length) return;
+
+    // 1. Copy values to clipboard (no headers)
     const text = rows.map(r =>
       [r.fecha, r.nhc, r.nombre, r.ptc, r.medico, r.entidad].join('\t')
     ).join('\n');
-    navigator.clipboard.writeText(text).then(() => showToast('Copiado al portapapeles'));
+    await navigator.clipboard.writeText(text);
+
+    // 2. Mark all as copied in the DB
+    const ids = rows.map(r => r.id).filter(Boolean);
+    if (ids.length) {
+      await fetch('/extractions/mark-copied', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+    }
+
+    // 3. Clear the pending queue view
+    state[view] = [];
+    renderTable(view);
+    showToast(`✅ ${ids.length} registro(s) copiados y marcados como procesados`);
   }
 
   function downloadCSV(view) {
