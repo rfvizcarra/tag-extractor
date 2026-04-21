@@ -1048,13 +1048,18 @@
     const panel = document.getElementById('gs-panel');
     panel.style.display = '';
     try {
-      const res  = await fetch('/google/auth/status');
-      if (!res.ok) return;
-      const data = await res.json();
-      googleConnected = data.connected;
-      renderGooglePanel();
-      if (googleConnected) await loadGoogleSheets();
-    } catch { /* ignore */ }
+      const res = await fetch('/google/auth/status');
+      if (res.ok) {
+        const data = await res.json();
+        googleConnected = data.connected;
+      } else {
+        googleConnected = false;
+      }
+    } catch {
+      googleConnected = false;
+    }
+    renderGooglePanel();
+    if (googleConnected) await loadGoogleSheets();
   }
 
   function renderGooglePanel() {
