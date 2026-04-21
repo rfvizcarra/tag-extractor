@@ -111,7 +111,7 @@ def init_db():
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS google_connections (
                     id            SERIAL PRIMARY KEY,
-                    user_id       INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    user_id       INTEGER UNIQUE NOT NULL,
                     access_token  TEXT NOT NULL,
                     refresh_token TEXT,
                     token_expiry  TIMESTAMP,
