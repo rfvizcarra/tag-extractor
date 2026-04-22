@@ -96,7 +96,7 @@ def init_db():
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS extractions (
                     id         SERIAL PRIMARY KEY,
-                    user_id    INTEGER NOT NULL REFERENCES users(id),
+                    user_id    TEXT NOT NULL,
                     tipo       TEXT NOT NULL DEFAULT 'Etiqueta',
                     fecha      TEXT NOT NULL,
                     nhc        TEXT,
@@ -111,7 +111,7 @@ def init_db():
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS google_connections (
                     id            SERIAL PRIMARY KEY,
-                    user_id       INTEGER UNIQUE NOT NULL,
+                    user_id       TEXT UNIQUE NOT NULL,
                     access_token  TEXT NOT NULL,
                     refresh_token TEXT,
                     token_expiry  TIMESTAMP,
@@ -123,6 +123,27 @@ def init_db():
             # Migrations for existing deployments
             cur.execute("ALTER TABLE extractions ADD COLUMN IF NOT EXISTS tipo   TEXT NOT NULL DEFAULT 'Etiqueta'")
             cur.execute("ALTER TABLE extractions ADD COLUMN IF NOT EXISTS copied BOOLEAN NOT NULL DEFAULT FALSE")
+            # Migrate user_id columns from INTEGER to TEXT (handles UUID-based Supabase users)
+            cur.execute("""
+                ALTER TABLE extractions
+                    DROP CONSTRAINT IF EXISTS extractions_user_id_fkey
+            """)
+            cur.execute("""
+                DO $$ BEGIN
+                    IF (SELECT data_type FROM information_schema.columns
+                        WHERE table_name='extractions' AND column_name='user_id') = 'integer' THEN
+                        ALTER TABLE extractions ALTER COLUMN user_id TYPE TEXT USING user_id::TEXT;
+                    END IF;
+                END $$
+            """)
+            cur.execute("""
+                DO $$ BEGIN
+                    IF (SELECT data_type FROM information_schema.columns
+                        WHERE table_name='google_connections' AND column_name='user_id') = 'integer' THEN
+                        ALTER TABLE google_connections ALTER COLUMN user_id TYPE TEXT USING user_id::TEXT;
+                    END IF;
+                END $$
+            """)
         conn.commit()
     finally:
         conn.close()
@@ -168,7 +189,7 @@ def create_user(username: str, email: str, password: str):
 
 # ── Extractions ────────────────────────────────────────────────────────────
 
-def save_extraction(user_id: int, tipo: str, fecha: str, nhc: str,
+def save_extraction(user_id: str, tipo: str, fecha: str, nhc: str,
                     nombre: str, ptc: str, medico: str, entidad: str) -> dict:
     conn = get_conn()
     try:
@@ -186,7 +207,7 @@ def save_extraction(user_id: int, tipo: str, fecha: str, nhc: str,
         conn.close()
 
 
-def get_extractions(user_id: int, tipo: Optional[str] = None,
+def get_extractions(user_id: str, tipo: Optional[str] = None,
                     copied: Optional[bool] = None) -> list:
     conn = get_conn()
     try:
@@ -204,7 +225,7 @@ def get_extractions(user_id: int, tipo: Optional[str] = None,
         conn.close()
 
 
-def get_extractions_by_ids(user_id: int, ids: List[int]) -> list:
+def get_extractions_by_ids(user_id: str, ids: List[int]) -> list:
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -217,7 +238,7 @@ def get_extractions_by_ids(user_id: int, ids: List[int]) -> list:
         conn.close()
 
 
-def mark_extractions_copied(user_id: int, ids: List[int]) -> int:
+def mark_extractions_copied(user_id: str, ids: List[int]) -> int:
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -232,7 +253,7 @@ def mark_extractions_copied(user_id: int, ids: List[int]) -> int:
         conn.close()
 
 
-def delete_extractions_by_ids(user_id: int, ids: List[int]) -> int:
+def delete_extractions_by_ids(user_id: str, ids: List[int]) -> int:
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -249,7 +270,7 @@ def delete_extractions_by_ids(user_id: int, ids: List[int]) -> int:
 
 # ── Google connections ─────────────────────────────────────────────────────
 
-def upsert_google_tokens(user_id: int, access_token: str,
+def upsert_google_tokens(user_id: str, access_token: str,
                          refresh_token: Optional[str],
                          token_expiry: Optional[str],
                          scopes: Optional[str]):
@@ -271,7 +292,7 @@ def upsert_google_tokens(user_id: int, access_token: str,
         conn.close()
 
 
-def get_google_tokens(user_id: int) -> Optional[dict]:
+def get_google_tokens(user_id: str) -> Optional[dict]:
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -282,7 +303,7 @@ def get_google_tokens(user_id: int) -> Optional[dict]:
         conn.close()
 
 
-def delete_google_tokens(user_id: int):
+def delete_google_tokens(user_id: str):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -321,7 +342,7 @@ def _build_flow() -> Flow:
     )
 
 
-def _get_credentials(user_id: int) -> Optional[Credentials]:
+def _get_credentials(user_id: str) -> Optional[Credentials]:
     tokens = get_google_tokens(user_id)
     if not tokens:
         return None
@@ -388,7 +409,7 @@ async def register(request: Request):
     user = get_user_by_username(username)
 
     session_id = secrets.token_urlsafe(32)
-    sessions[session_id] = {"user_id": user["id"], "username": user["username"]}
+    sessions[session_id] = {"user_id": str(user["id"]), "username": user["username"]}
 
     resp = JSONResponse({"success": True, "username": username})
     resp.set_cookie("session_id", session_id, httponly=True, samesite="lax")
@@ -406,7 +427,7 @@ async def login(request: Request):
         raise HTTPException(401, "Usuario o contraseña incorrectos")
 
     session_id = secrets.token_urlsafe(32)
-    sessions[session_id] = {"user_id": user["id"], "username": user["username"]}
+    sessions[session_id] = {"user_id": str(user["id"]), "username": user["username"]}
 
     resp = JSONResponse({"success": True, "username": username})
     resp.set_cookie("session_id", session_id, httponly=True, samesite="lax")
