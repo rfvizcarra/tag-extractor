@@ -589,10 +589,17 @@ async def google_auth_callback(request: Request, code: str, state: str):
 
     try:
         flow = _build_flow()
-        flow.fetch_token(authorization_response=str(request.url))
+        # Render proxies internally as http:// even when the public URL is https://
+        # The registered redirect URI uses https://, so we must upgrade the scheme here
+        auth_response = str(request.url)
+        if GOOGLE_REDIRECT_URI.startswith("https://") and auth_response.startswith("http://"):
+            auth_response = "https://" + auth_response[7:]
+        flow.fetch_token(authorization_response=auth_response)
         creds = flow.credentials
     except Exception as e:
-        return RedirectResponse(f"/?google_error=token_exchange_failed")
+        import urllib.parse
+        err = urllib.parse.quote(str(e)[:120], safe="")
+        return RedirectResponse(f"/?google_error={err}")
 
     upsert_google_tokens(
         session["user_id"],
