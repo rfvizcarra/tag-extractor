@@ -558,6 +558,9 @@
         <div class="nav-item" id="nav-historia" onclick="showView('historia')">
           <span class="nav-icon">📊</span> Historia
         </div>
+        <div class="nav-item" id="nav-config" onclick="showView('config')">
+          <span class="nav-icon">⚙️</span> Configuración
+        </div>
       </nav>
       <div class="sidebar-footer">
         <div class="sidebar-username" id="sidebar-username"></div>
@@ -575,6 +578,9 @@
       </div>
       <div class="bottom-nav-item" id="bn-historia" onclick="showView('historia')">
         <span class="bn-icon">📊</span>Historia
+      </div>
+      <div class="bottom-nav-item" id="bn-config" onclick="showView('config')">
+        <span class="bn-icon">⚙️</span>Config
       </div>
     </nav>
 
@@ -602,6 +608,7 @@
             <div class="table-actions">
               <button class="btn btn-default" onclick="copyAll('etiquetas')">📋 Copiar todo</button>
               <button class="btn btn-green"   onclick="downloadCSV('etiquetas')">⬇ Descargar CSV</button>
+              <button class="btn btn-sheets"  id="btn-send-etiquetas" onclick="sendViewToGoogle('etiquetas')" disabled>📤 Enviar a Google</button>
               <button class="btn btn-red"     onclick="clearView('etiquetas')">🗑 Limpiar</button>
             </div>
           </div>
@@ -643,6 +650,7 @@
             <div class="table-actions">
               <button class="btn btn-default" onclick="copyAll('ficha')">📋 Copiar todo</button>
               <button class="btn btn-green"   onclick="downloadCSV('ficha')">⬇ Descargar CSV</button>
+              <button class="btn btn-sheets"  id="btn-send-ficha" onclick="sendViewToGoogle('ficha')" disabled>📤 Enviar a Google</button>
               <button class="btn btn-red"     onclick="clearView('ficha')">🗑 Limpiar</button>
             </div>
           </div>
@@ -667,40 +675,6 @@
       <div id="view-historia" class="view">
         <div class="page-title">Historia</div>
 
-        <!-- Google Sheets panel -->
-        <div id="gs-panel" class="gs-panel" style="display:none">
-          <div class="gs-title">
-            <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0">
-              <path fill="#34a853" d="M29 3H19v30l10-3V3z"/>
-              <path fill="#188038" d="M19 33l-10 3V6l10-3v30z"/>
-              <path fill="#34a853" d="M9 36l10-3 20 6-10 3L9 36z"/>
-              <path fill="#4285f4" d="M29 3l10 3v30l-10-3V3z"/>
-              <path fill="#1967d2" d="M39 36L29 33V3l10 3v30z"/>
-              <path fill="#fbbc04" d="M9 36l10 3 20-6-10-3L9 36z"/>
-            </svg>
-            Google Sheets
-            <span class="gs-status-dot disconnected" id="gs-dot"></span>
-            <span class="gs-status-text" id="gs-status-text">Cargando...</span>
-          </div>
-
-          <!-- Not connected -->
-          <div id="gs-connect-area" style="display:none">
-            <button class="btn btn-google" onclick="connectGoogle()">🔗 Conectar Google</button>
-          </div>
-
-          <!-- Connected -->
-          <div id="gs-connected-area" class="gs-actions" style="display:none">
-            <div class="gs-divider"></div>
-            <select id="gs-sheet-select" class="gs-select" onchange="onSheetSelect(this.value)">
-              <option value="">Selecciona una hoja...</option>
-            </select>
-            <button id="btn-send-google" class="btn btn-sheets" onclick="sendToGoogleSheets()" disabled>
-              📤 Enviar a Sheets
-            </button>
-            <button class="btn btn-gs-disconnect" onclick="disconnectGoogle()">✕ Desconectar</button>
-          </div>
-        </div>
-
         <div class="table-card">
           <div class="table-header">
             <h2>Todas las extracciones</h2>
@@ -708,6 +682,8 @@
               <span id="historia-selected-count" style="font-size:.82rem;color:#718096;display:none"></span>
               <button class="btn btn-default" id="btn-copy-selected"
                       onclick="copySelected()" disabled>📋 Copiar seleccionados</button>
+              <button class="btn btn-sheets"  id="btn-send-historia"
+                      onclick="sendToGoogleSheets()" disabled>📤 Enviar a Google</button>
               <button class="btn btn-red"     id="btn-delete-selected"
                       onclick="deleteSelected()" disabled>🗑 Eliminar seleccionados</button>
               <button class="btn btn-default" onclick="loadHistoria()">↻ Actualizar</button>
@@ -728,6 +704,57 @@
           <div class="table-footer">
             <span id="count-historia">0 filas</span>
             <span id="historia-sel-label" style="color:#5a67d8;font-weight:600;display:none"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CONFIGURACIÓN ── -->
+      <div id="view-config" class="view">
+        <div class="page-title">Configuración</div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <h2>Google Sheets</h2>
+          </div>
+          <div style="padding:1.25rem 1.5rem">
+            <p style="font-size:.88rem;color:#718096;margin-bottom:1.25rem;line-height:1.5">
+              Conecta tu cuenta de Google para enviar datos extraídos directamente a una hoja de cálculo.
+              Una vez conectado, selecciona la hoja por defecto que se usará en Etiquetas, Ficha Médica e Historia.
+            </p>
+
+            <!-- Status row -->
+            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem">
+              <svg width="20" height="20" viewBox="0 0 48 48" style="flex-shrink:0">
+                <path fill="#34a853" d="M29 3H19v30l10-3V3z"/>
+                <path fill="#188038" d="M19 33l-10 3V6l10-3v30z"/>
+                <path fill="#34a853" d="M9 36l10-3 20 6-10 3L9 36z"/>
+                <path fill="#4285f4" d="M29 3l10 3v30l-10-3V3z"/>
+                <path fill="#1967d2" d="M39 36L29 33V3l10 3v30z"/>
+                <path fill="#fbbc04" d="M9 36l10 3 20-6-10-3L9 36z"/>
+              </svg>
+              <span style="font-weight:600;font-size:.92rem;color:#2d3748">Google Sheets</span>
+              <span class="gs-status-dot disconnected" id="gs-dot"></span>
+              <span class="gs-status-text" id="gs-status-text">Cargando...</span>
+            </div>
+
+            <!-- Not connected -->
+            <div id="gs-connect-area" style="display:none;margin-bottom:.75rem">
+              <button class="btn btn-google" onclick="connectGoogle()">🔗 Conectar con Google</button>
+            </div>
+
+            <!-- Connected -->
+            <div id="gs-connected-area" style="display:none">
+              <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.65rem">
+                <label style="font-size:.85rem;font-weight:600;color:#4a5568;white-space:nowrap">Hoja por defecto:</label>
+                <select id="gs-sheet-select" class="gs-select" style="max-width:400px" onchange="onSheetSelect(this.value)">
+                  <option value="">Selecciona una hoja...</option>
+                </select>
+              </div>
+              <p id="gs-sheet-hint" style="font-size:.8rem;color:#48bb78;margin-bottom:.9rem;display:none">
+                ✓ Los datos se enviarán a esta hoja al pulsar "Enviar a Google"
+              </p>
+              <button class="btn btn-gs-disconnect" onclick="disconnectGoogle()">✕ Desconectar cuenta de Google</button>
+            </div>
           </div>
         </div>
       </div>
@@ -808,6 +835,7 @@
   async function doLogout() {
     await fetch('/auth/logout', { method: 'POST' });
     state.etiquetas = []; state.ficha = []; state.historia = [];
+    googleConnected = false; googleSheets = []; selectedSheetId = null;
     document.getElementById('app-view').style.display = 'none';
     document.getElementById('auth-view').style.display = 'flex';
     showLogin();
@@ -820,6 +848,7 @@
     document.getElementById('app-view').style.display = 'block';
     showView('etiquetas');
     await loadSavedExtractions();
+    checkGoogleStatus(); // load in background so send buttons reflect state immediately
   }
 
   async function loadSavedExtractions() {
@@ -840,15 +869,13 @@
      NAVIGATION
   ═══════════════════════════════════════ */
   function showView(name) {
-    ['etiquetas','ficha','historia'].forEach(v => {
+    ['etiquetas','ficha','historia','config'].forEach(v => {
       document.getElementById('view-' + v).classList.toggle('active', v === name);
       document.getElementById('nav-' + v).classList.toggle('active', v === name);
       document.getElementById('bn-' + v).classList.toggle('active', v === name);
     });
-    if (name === 'historia') {
-      loadHistoria();
-      checkGoogleStatus();
-    }
+    if (name === 'historia') loadHistoria();
+    if (name === 'config')   checkGoogleStatus();
   }
 
   /* ═══════════════════════════════════════
@@ -918,6 +945,7 @@
         <td data-label="Entidad"               >${r.entidad||''}</td>
       </tr>`).join('');
     count.textContent = `${rows.length} ${rows.length===1?'fila':'filas'}`;
+    updateAllSendButtons();
   }
 
   /* ═══════════════════════════════════════
@@ -973,7 +1001,7 @@
       c.closest('tr').classList.toggle('selected', checkbox.checked);
     });
     updateSelectionUI();
-    updateSendButton();
+    updateAllSendButtons();
   }
 
   function onCheckChange() {
@@ -984,7 +1012,7 @@
       c.closest('tr').classList.toggle('selected', c.checked);
     });
     updateSelectionUI();
-    updateSendButton();
+    updateAllSendButtons();
   }
 
   function getSelectedIds() {
@@ -1045,21 +1073,15 @@
      GOOGLE SHEETS
   ═══════════════════════════════════════ */
   async function checkGoogleStatus() {
-    const panel = document.getElementById('gs-panel');
-    panel.style.display = '';
     try {
       const res = await fetch('/google/auth/status');
-      if (res.ok) {
-        const data = await res.json();
-        googleConnected = data.connected;
-      } else {
-        googleConnected = false;
-      }
+      googleConnected = res.ok ? (await res.json()).connected : false;
     } catch {
       googleConnected = false;
     }
     renderGooglePanel();
     if (googleConnected) await loadGoogleSheets();
+    else updateAllSendButtons();
   }
 
   function renderGooglePanel() {
@@ -1067,19 +1089,19 @@
     const statusText    = document.getElementById('gs-status-text');
     const connectArea   = document.getElementById('gs-connect-area');
     const connectedArea = document.getElementById('gs-connected-area');
+    if (!dot) return; // config view not rendered yet
 
     if (googleConnected) {
-      dot.className       = 'gs-status-dot connected';
+      dot.className          = 'gs-status-dot connected';
       statusText.textContent = 'Conectado';
       connectArea.style.display   = 'none';
-      connectedArea.style.display = 'flex';
+      connectedArea.style.display = '';
     } else {
-      dot.className       = 'gs-status-dot disconnected';
+      dot.className          = 'gs-status-dot disconnected';
       statusText.textContent = 'No conectado';
       connectArea.style.display   = '';
       connectedArea.style.display = 'none';
     }
-    updateSendButton();
   }
 
   async function connectGoogle() {
@@ -1105,17 +1127,18 @@
 
   async function loadGoogleSheets() {
     const select = document.getElementById('gs-sheet-select');
+    if (!select) return;
     select.innerHTML = '<option value="">Cargando hojas...</option>';
     try {
       const res = await fetch('/google/sheets');
       if (!res.ok) {
         select.innerHTML = '<option value="">Error al cargar hojas</option>';
-        return;
+        updateAllSendButtons(); return;
       }
       googleSheets = await res.json();
       if (!googleSheets.length) {
         select.innerHTML = '<option value="">Sin hojas de cálculo encontradas</option>';
-        return;
+        updateAllSendButtons(); return;
       }
       select.innerHTML = '<option value="">Selecciona una hoja...</option>' +
         googleSheets.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
@@ -1128,26 +1151,40 @@
     } catch {
       select.innerHTML = '<option value="">Error al cargar</option>';
     }
-    updateSendButton();
+    _updateSheetHint();
+    updateAllSendButtons();
+  }
+
+  function _updateSheetHint() {
+    const hint = document.getElementById('gs-sheet-hint');
+    if (hint) hint.style.display = selectedSheetId ? '' : 'none';
   }
 
   function onSheetSelect(id) {
     selectedSheetId = id || null;
-    updateSendButton();
+    _updateSheetHint();
+    updateAllSendButtons();
   }
 
-  function updateSendButton() {
-    const btn = document.getElementById('btn-send-google');
-    if (!btn) return;
-    const ids = getSelectedIds();
-    btn.disabled = !(googleConnected && selectedSheetId && ids.length > 0);
+  function updateAllSendButtons() {
+    const hasSheet = !!(googleConnected && selectedSheetId);
+    // Etiquetas
+    const btnEt = document.getElementById('btn-send-etiquetas');
+    if (btnEt) btnEt.disabled = !(hasSheet && state.etiquetas.length > 0);
+    // Ficha
+    const btnFi = document.getElementById('btn-send-ficha');
+    if (btnFi) btnFi.disabled = !(hasSheet && state.ficha.length > 0);
+    // Historia
+    const btnHi = document.getElementById('btn-send-historia');
+    if (btnHi) btnHi.disabled = !(hasSheet && getSelectedIds().length > 0);
   }
 
+  /* Send selected rows from Historia to Google Sheets */
   async function sendToGoogleSheets() {
     const ids = getSelectedIds();
     if (!ids.length || !selectedSheetId) return;
 
-    const btn = document.getElementById('btn-send-google');
+    const btn = document.getElementById('btn-send-historia');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Enviando...';
 
@@ -1166,8 +1203,48 @@
       }
     } catch { showToast('❌ Error de red'); }
     finally {
-      btn.innerHTML = '📤 Enviar a Sheets';
-      updateSendButton();
+      btn.innerHTML = '📤 Enviar a Google';
+      updateAllSendButtons();
+    }
+  }
+
+  /* Send all rows from Etiquetas or Ficha to Google Sheets, then mark as copied & clear */
+  async function sendViewToGoogle(view) {
+    const rows = state[view];
+    if (!rows.length || !selectedSheetId) return;
+
+    const btn = document.getElementById('btn-send-' + view);
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Enviando...';
+
+    try {
+      const ids = rows.map(r => r.id).filter(Boolean);
+      const res = await fetch('/google/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spreadsheet_id: selectedSheetId, ids }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast('❌ ' + (data.detail || 'Error al enviar a Sheets'));
+      } else {
+        // Mark as copied and clear the pending queue
+        if (ids.length) {
+          await fetch('/extractions/mark-copied', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids }),
+          });
+        }
+        state[view] = [];
+        renderTable(view);
+        showToast(`✅ ${data.rows_written} fila(s) enviadas y marcadas como procesadas`);
+        window.open(data.spreadsheet_url, '_blank');
+      }
+    } catch { showToast('❌ Error de red'); }
+    finally {
+      btn.innerHTML = '📤 Enviar a Google';
+      updateAllSendButtons();
     }
   }
 
@@ -1261,7 +1338,7 @@
         const d = await res.json();
         await enterApp(d.username);
         if (googleOk) {
-          showView('historia');
+          showView('config');
           showToast('✅ Google Sheets conectado correctamente');
         } else if (googleErr) {
           showToast('❌ Error conectando Google: ' + googleErr.replace(/_/g, ' '));

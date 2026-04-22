@@ -643,6 +643,8 @@ async def google_send_to_sheet(request: Request):
     if not rows_data:
         raise HTTPException(404, "Registros no encontrados")
 
+    EXPECTED_HEADERS = ["Fecha", "NHC", "Nombre", "PTC", "Médico", "Entidad"]
+
     try:
         sheets_svc = build("sheets", "v4", credentials=creds)
 
@@ -651,15 +653,33 @@ async def google_send_to_sheet(request: Request):
         sheet_name = meta["sheets"][0]["properties"]["title"]
         range_ref  = f"'{sheet_name}'!A:F"
 
-        # Check if headers already exist in A1
-        check = sheets_svc.spreadsheets().values().get(
+        # Read the first row to check structure
+        first_row_resp = sheets_svc.spreadsheets().values().get(
             spreadsheetId=spreadsheet_id,
-            range=f"'{sheet_name}'!A1"
+            range=f"'{sheet_name}'!A1:F1"
         ).execute()
+        first_row = first_row_resp.get("values", [[]])[0] if first_row_resp.get("values") else []
 
         values = []
-        if not check.get("values"):
-            values.append(["Fecha", "NHC", "Nombre", "PTC", "Médico", "Entidad"])
+        if not first_row:
+            # Sheet is empty — write headers first
+            values.append(EXPECTED_HEADERS)
+        else:
+            # Sheet has content — validate headers match (case-insensitive, accent-tolerant)
+            def normalize(s):
+                return s.strip().lower().replace("é", "e").replace("á", "a").replace("í", "i")
+
+            expected_norm = [normalize(h) for h in EXPECTED_HEADERS]
+            actual_norm   = [normalize(str(c)) for c in first_row[:6]]
+
+            if actual_norm != expected_norm:
+                raise HTTPException(
+                    400,
+                    f"La hoja '{sheet_name}' tiene una estructura diferente. "
+                    f"Se esperaban las columnas: {', '.join(EXPECTED_HEADERS)}. "
+                    f"Se encontró: {', '.join(first_row[:6]) or '(vacío)'}. "
+                    f"Selecciona una hoja vacía o una que ya tenga el formato correcto."
+                )
 
         for r in rows_data:
             values.append([r["fecha"], r["nhc"] or "", r["nombre"] or "",
@@ -676,5 +696,7 @@ async def google_send_to_sheet(request: Request):
         spreadsheet_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}"
         return {"success": True, "rows_written": len(rows_data), "spreadsheet_url": spreadsheet_url}
 
+    except HTTPException:
+        raise  # re-raise our own validation errors as-is
     except Exception as e:
         raise HTTPException(500, f"Error enviando a Sheets: {e}")
