@@ -567,10 +567,11 @@ async def google_auth_login(request: Request):
     flow = _build_flow()
     auth_url, state = flow.authorization_url(access_type="offline", prompt="consent")
 
-    # Save state in session so callback can verify it
+    # Save state AND code_verifier (PKCE) in session so callback can use them
     session_id = request.cookies.get("session_id")
     if session_id and session_id in sessions:
-        sessions[session_id]["google_oauth_state"] = state
+        sessions[session_id]["google_oauth_state"]    = state
+        sessions[session_id]["google_code_verifier"]  = getattr(flow, "code_verifier", None)
 
     return {"auth_url": auth_url}
 
@@ -589,11 +590,18 @@ async def google_auth_callback(request: Request, code: str, state: str):
 
     try:
         flow = _build_flow()
+
+        # Restore PKCE code_verifier generated during login (new flow instance doesn't have it)
+        code_verifier = session.pop("google_code_verifier", None)
+        if code_verifier:
+            flow.code_verifier = code_verifier
+
         # Render proxies internally as http:// even when the public URL is https://
         # The registered redirect URI uses https://, so we must upgrade the scheme here
         auth_response = str(request.url)
         if GOOGLE_REDIRECT_URI.startswith("https://") and auth_response.startswith("http://"):
             auth_response = "https://" + auth_response[7:]
+
         flow.fetch_token(authorization_response=auth_response)
         creds = flow.credentials
     except Exception as e:
